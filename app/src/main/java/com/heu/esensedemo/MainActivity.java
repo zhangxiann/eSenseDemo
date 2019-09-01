@@ -13,13 +13,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.media.AudioManager;
+import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Looper;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
 import com.heu.esensedemo.io.esense.esenselib.app.src.main.java.io.esense.esenselib.ESenseConfig;
 import com.heu.esensedemo.io.esense.esenselib.app.src.main.java.io.esense.esenselib.ESenseConnectionListener;
@@ -30,7 +31,6 @@ import com.heu.esensedemo.io.esense.esenselib.app.src.main.java.io.esense.esense
 
 import java.util.Arrays;
 
-// TODO: 2019-08-28 适配动态权限  记得注销listener
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, ESenseConnectionListener, ESenseSensorListener, ESenseEventListener {
     public static final String TAG = "HEU-IOT-eSense";
     public static final int REQUEST_ACCESS_COARSE_LOCATION_PERMISSION = 0x43;
@@ -43,9 +43,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private Button leftButton;
     private Button rightButton;
+    private Button startRecordButton;
+    private Button stopRecordButton;
     private ESenseManager manager;
     private BluetoothAdapter mBluetoothAdapter;
-    private int index = 0;
+    ESenseConfig config;
+    private int index = 0; //记录多少行数据
+    private AudioManager audioManager;
+    private MediaRecorder mediaRecorder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,9 +58,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         leftButton = findViewById(R.id.left_button);
         rightButton = findViewById(R.id.right_button);
+        startRecordButton = findViewById(R.id.start_record_button);
+        stopRecordButton = findViewById(R.id.stop_record_button);
         leftButton.setOnClickListener(this);
         rightButton.setOnClickListener(this);
+        startRecordButton.setOnClickListener(this);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        registerBluetoothReceiver();
         requestPermissions();
         CsvHelper.open();
 
@@ -79,6 +89,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 connect();
                 Log.d(TAG, "------ you start to find "+rightEarbudName+" ------");
                 break;
+            case R.id.start_record_button:
+
+                break;
+
+            case R.id.stop_record_button:
+
+                break;
 
             default:
                 break;
@@ -101,7 +118,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onConnected(com.heu.esensedemo.io.esense.esenselib.app.src.main.java.io.esense.esenselib.ESenseManager manager) {
         Log.d(TAG, "------ the eSense earbud is successfully connected ------");
         //Toast.makeText(this, "------ the eSense earbud is successfully connected ------", Toast.LENGTH_SHORT).show();
-
+        //manager.getSensorConfig();
+        //manager.getBatteryVoltage();
+        //manager.getAccelerometerOffset();
+        //manager.setDeviceName();
+        //ESenseConfig config = new ESenseConfig(ESenseConfig.AccRange.G_2, ESenseConfig.GyroRange.DEG_250, ESenseConfig.AccLPF.BW_20, ESenseConfig.GyroLPF.BW_10);
+        //manager.setSensorConfig();
         manager.registerSensorListener(this, 100);
         manager.registerEventListener(this);
     }
@@ -110,7 +132,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onDisconnected(ESenseManager manager) {
         Log.d(TAG, "------ the eSense earbud is disconnected ------");
     }
-
 
 
     @Override
@@ -129,6 +150,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             CsvHelper.flush();
             manager.disconnect();
         }
+
+        //evt.convertAccToG(config); //acceleration in g
+        //evt.convertGyroToDegPerSecond(config);  rotational speed in degrees/second
 
         index++;
 
@@ -162,6 +186,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onSensorConfigRead(ESenseConfig config) {
         Log.d(TAG, "------ read Sensor config ------");
+        this.config = config;
     }
 
     @Override
@@ -246,5 +271,76 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
     };
+
+    @Override
+    protected void onDestroy() {
+        manager.unregisterEventListener();
+        manager.unregisterSensorListener();
+
+        manager.disconnect();
+        super.onDestroy();
+    }
+
+
+    private void startRecording(){
+        String fileName = Environment.getExternalStorageDirectory().getAbsolutePath()+"/record.3gp";
+        mediaRecorder = new MediaRecorder();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        mediaRecorder.setOutputFile(fileName);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        try {
+            mediaRecorder.prepare();
+        } catch (Exception e) {
+            // TODO: handle exception
+            Log.i(TAG, "prepare() failed!");
+        }
+        if (!audioManager.isBluetoothScoAvailableOffCall()) {
+            Log.i(TAG, "系统不支持蓝牙录音");
+            return;
+        }
+        Log.i(TAG, "系统支持蓝牙录音");
+        audioManager.stopBluetoothSco();
+        audioManager.startBluetoothSco();
+        registerReceiver(new ESenseBroadcastReceiver(), new IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED));
+    }
+
+
+    private void stopRecording(){
+        mediaRecorder.stop();
+        mediaRecorder.release();
+        mediaRecorder=null;
+        if(audioManager.isBluetoothScoOn()){
+            audioManager.setBluetoothScoOn(false);
+            audioManager.stopBluetoothSco();
+        }
+    }
+
+
+
+
+    class ESenseBroadcastReceiver extends BroadcastReceiver{
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int state = intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1);
+            if (state == AudioManager.SCO_AUDIO_STATE_CONNECTED){
+                Log.i(TAG, "AudioManager.SCO_AUDIO_STATE_CONNECTED");
+                audioManager.setBluetoothScoOn(true);
+                Log.i(TAG, "Routing:" + audioManager.isBluetoothScoOn());
+                audioManager.setMode(AudioManager.STREAM_MUSIC);
+                mediaRecorder.start();
+                unregisterReceiver(this);
+            }else{
+                try{
+                    Thread.sleep(10000);
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+                audioManager.startBluetoothSco();
+                Log.i(TAG, "再次startBluetoothSco()");
+            }
+        }
+    }
 
 }
