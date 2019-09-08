@@ -62,12 +62,12 @@ public class ESenseEvent {
      * @param config device configuration
      * @return acceleration in g on X, Y and Z axis
      */
-    public double[] convertAccToG(ESenseConfig config){
+    public double[] convertAccToG(ESenseConfig config, int[] offset){
         double[] data = new double[3];
         for (int i = 0; i < 3; i++) {
+            //data[i] = ((accel[i]-offset[i]) / config.getAccSensitivityFactor());
             data[i] = (accel[i] / config.getAccSensitivityFactor());
         }
-
         return(data);
     }
 
