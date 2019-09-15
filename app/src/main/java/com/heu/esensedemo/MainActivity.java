@@ -71,6 +71,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private int offsetX, offsetY, offsetZ;
     private int minAdvertisementInterval;
     private int maxAdvertisementInterval;
+    private float time;
+    private int sampleingRate = 100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,13 +109,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 boolean test1 = manager.getSensorConfig();
                 Log.d(TAG, "getSensorConfig = " + test1);
-//                try {
-//                    Thread.sleep(500);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//                boolean test = manager.getAdvertisementAndConnectionInterval();
-//                Log.d(TAG, "getAdvertisementAndConnectionInterval = " + test);
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                boolean test = manager.getAdvertisementAndConnectionInterval();
+                Log.d(TAG, "getAdvertisementAndConnectionInterval = " + test);
                 try {
                     Thread.sleep(800);
                 } catch (InterruptedException e) {
@@ -122,7 +124,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 manager.getAccelerometerOffset();
                 break;
             case R.id.set_button:
-                boolean result = manager.setAdvertisementAndConnectiontInterval(1000, 2000, 20, 80);
+                boolean result = manager.setAdvertisementAndConnectiontInterval(1000, 2000, 20, 40);
                 Log.d(TAG, "setAdvertisementAndConnectiontInterval = " + result);
                 break;
 
@@ -136,7 +138,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             case R.id.stop_record_button:
                 endTime = System.currentTimeMillis();
-                Log.d(TAG, "计时时间 = " + (endTime - startTime) / 1000);
+                time = (endTime - startTime)/1000.0f;
                 stopRecording();
                 timer.stop();
                 break;
@@ -175,7 +177,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //manager.setDeviceName();
         //ESenseConfig config = new ESenseConfig(ESenseConfig.AccRange.G_2, ESenseConfig.GyroRange.DEG_250, ESenseConfig.AccLPF.BW_20, ESenseConfig.GyroLPF.BW_10);
         //manager.setSensorConfig();
-        manager.registerSensorListener(this, 100);
+        manager.registerSensorListener(this, sampleingRate);
         manager.registerEventListener(this);
         //manager.getSensorConfig();
         unregisterReceiver(bluetoothReceiver);
@@ -189,7 +191,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onSensorChanged(ESenseEvent evt) {
-
         //evt.convertAccToG(manager.getSensorConfig())
         //manager.get
 //        Log.d(TAG, "------packet index is :" + evt.getPacketIndex() + " ------");
@@ -229,7 +230,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Log.d(TAG, "------ ConnectionInterval range is ( " + String.valueOf(minConnectionInterval) + "---" + String.valueOf(maxConnectionInterval) + ") ------");
         this.minAdvertisementInterval = minAdvertisementInterval;
         this.maxAdvertisementInterval = maxAdvertisementInterval;
-        manager.setAdvertisementAndConnectiontInterval(minAdvertisementInterval, maxAdvertisementInterval, 20, 100);
+        //manager.setAdvertisementAndConnectiontInterval(minAdvertisementInterval, maxAdvertisementInterval, 20, 100);
     }
 
     @Override
@@ -386,6 +387,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //CsvHelper.flush();
         Message msg = Message.obtain();
         msg.what = 0;
+        msg.obj=time;
+        msg.arg1=sampleingRate;
         csvThread.handler.sendMessage(msg);
     }
 

@@ -27,7 +27,7 @@ public class CsvHelper {
     private static String mGyroFileName = null;
     private static BufferedOutputStream accelOutputStream;
     private static BufferedOutputStream gyroOutputStream;
-
+    private int i=0;
 
     public static void open(long timesamp) {
         String folderName = null;
@@ -133,7 +133,7 @@ public class CsvHelper {
     }
 
     public static final class LooperThread extends Thread {
-
+        int i=0;
         public Handler handler;
         //private int i = 0;
 
@@ -146,12 +146,14 @@ public class CsvHelper {
             handler = new Handler() {
                 @Override
                 public void handleMessage(Message msg) {
-                    //i = i + 1;
+                    i = i + 1;
                     //Log.d(TAG, String.valueOf(i));
                     super.handleMessage(msg);
                     switch (msg.what) {
                         case 0:
-                            Log.d(TAG, "写入完成！");
+                            float time = (float) msg.obj;
+                            Log.d(TAG, "计时时间 = " + time +"ms; "+" imu 数据采集次数 =  "+i+"; 设置的采样频率 = " + msg.arg1 +"Hz; 实际采集频率 = "+ i/time+"Hz");
+
                             flush();
                             break;
                         case 1:
