@@ -23,10 +23,8 @@ public class CsvHelper {
     public static final String mComma = ",";
     public static final String TAG = "HEU-IOT-eSense";
 
-    private static String mAccelFileName = null;
-    private static String mGyroFileName = null;
-    private static BufferedOutputStream accelOutputStream;
-    private static BufferedOutputStream gyroOutputStream;
+    private static String mImuFileName = null;
+    private static BufferedOutputStream mImuOutputStream;
     private int i=0;
 
     public static void open(long timesamp) {
@@ -42,67 +40,55 @@ public class CsvHelper {
         if (!fileRobo.exists()) {
             fileRobo.mkdir();
         }
-        mAccelFileName = folderName + timesamp + "eSense-Accel.csv";
-        mGyroFileName = folderName + timesamp + "eSense-Gyro.csv";
+        mImuFileName = folderName + timesamp + "eSense-imu.csv";
         try {
-            accelOutputStream = new BufferedOutputStream(new FileOutputStream(
-                    new File(mAccelFileName)));
-            gyroOutputStream = new BufferedOutputStream(new FileOutputStream(
-                    new File(mGyroFileName)));
+            mImuOutputStream = new BufferedOutputStream(new FileOutputStream(
+                    new File(mImuFileName)));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-//        mAccelStringBuilder.append("timesamp");
-//        mAccelStringBuilder.append(mComma);
-//        mAccelStringBuilder.append("x");
-//        mAccelStringBuilder.append(mComma);
-//        mAccelStringBuilder.append("y");
-//        mAccelStringBuilder.append(mComma);
-//        mAccelStringBuilder.append("z");
-//        mAccelStringBuilder.append("\n");
+//        mImuStringBuilder.append("timesamp");
+//        mImuStringBuilder.append(mComma);
+//        mImuStringBuilder.append("x");
+//        mImuStringBuilder.append(mComma);
+//        mImuStringBuilder.append("y");
+//        mImuStringBuilder.append(mComma);
+//        mImuStringBuilder.append("z");
+//        mImuStringBuilder.append("\n");
 //
-//        mGyroStringBuilder = new StringBuilder(10241024);
-//        mGyroStringBuilder.append("timesamp");
-//        mGyroStringBuilder.append(mComma);
-//        mGyroStringBuilder.append("x");
-//        mGyroStringBuilder.append(mComma);
-//        mGyroStringBuilder.append("y");
-//        mGyroStringBuilder.append(mComma);
-//        mGyroStringBuilder.append("z");
-//        mGyroStringBuilder.append("\n");
+//        mImuStringBuilder = new StringBuilder(10241024);
+//        mImuStringBuilder.append("timesamp");
+//        mImuStringBuilder.append(mComma);
+//        mImuStringBuilder.append("x");
+//        mImuStringBuilder.append(mComma);
+//        mImuStringBuilder.append("y");
+//        mImuStringBuilder.append(mComma);
+//        mImuStringBuilder.append("z");
+//        mImuStringBuilder.append("\n");
 
     }
 
 
     public static void writeCsv(long timesamp, double accel_x, double accel_y, double accel_z, double gyro_x, double gyro_y, double gyro_z) {
-        StringBuilder mAccelStringBuilder = new StringBuilder();
-        StringBuilder mGyroStringBuilder = new StringBuilder();
-        mAccelStringBuilder = new StringBuilder();
-        mAccelStringBuilder.append(timesamp);
-        mAccelStringBuilder.append(mComma);
-        mAccelStringBuilder.append(accel_x);
-        mAccelStringBuilder.append(mComma);
-        mAccelStringBuilder.append(accel_y);
-        mAccelStringBuilder.append(mComma);
-        mAccelStringBuilder.append(accel_z);
-        mAccelStringBuilder.append("\n");
-        try {
-            accelOutputStream.write(mAccelStringBuilder.toString().getBytes());
+        StringBuilder mImuStringBuilder = new StringBuilder();
+        mImuStringBuilder = new StringBuilder();
+        mImuStringBuilder.append(timesamp);
+        mImuStringBuilder.append(mComma);
+        mImuStringBuilder.append(accel_x);
+        mImuStringBuilder.append(mComma);
+        mImuStringBuilder.append(accel_y);
+        mImuStringBuilder.append(mComma);
+        mImuStringBuilder.append(accel_z);
+        mImuStringBuilder.append(mComma);
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        mGyroStringBuilder.append(timesamp);
-        mGyroStringBuilder.append(mComma);
-        mGyroStringBuilder.append(gyro_x);
-        mGyroStringBuilder.append(mComma);
-        mGyroStringBuilder.append(gyro_y);
-        mGyroStringBuilder.append(mComma);
-        mGyroStringBuilder.append(gyro_z);
-        mGyroStringBuilder.append("\n");
+        mImuStringBuilder.append(gyro_x);
+        mImuStringBuilder.append(mComma);
+        mImuStringBuilder.append(gyro_y);
+        mImuStringBuilder.append(mComma);
+        mImuStringBuilder.append(gyro_z);
+        mImuStringBuilder.append("\n");
         try {
-            gyroOutputStream.write(mGyroStringBuilder.toString().getBytes());
+            mImuOutputStream.write(mImuStringBuilder.toString().getBytes());
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -111,25 +97,16 @@ public class CsvHelper {
 
 
     public static void flush() {
-        if (accelOutputStream != null) {
+        if (mImuOutputStream != null) {
             try {
-                accelOutputStream.flush();
-                accelOutputStream.close();
-                accelOutputStream = null;
+                mImuOutputStream.flush();
+                mImuOutputStream.close();
+                mImuOutputStream = null;
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-
-        if (gyroOutputStream != null) {
-            try {
-                gyroOutputStream.flush();
-                gyroOutputStream.close();
-                gyroOutputStream = null;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        
     }
 
     public static final class LooperThread extends Thread {
@@ -156,6 +133,7 @@ public class CsvHelper {
 
                             flush();
                             break;
+
                         case 1:
                             Bundle bundle = msg.getData();
                             ESenseData data = bundle.getParcelable("ESENSE_DATA");
