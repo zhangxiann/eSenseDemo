@@ -13,7 +13,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.media.AudioDeviceInfo;
+import android.media.AudioFormat;
 import android.media.AudioManager;
+import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
@@ -37,12 +40,16 @@ import com.heu.esensedemo.io.esense.esenselib.app.src.main.java.io.esense.esense
 import com.heu.esensedemo.io.esense.esenselib.app.src.main.java.io.esense.esenselib.ESenseSensorListener;
 
 import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.Arrays;
 
 //todo onRequestPermissionsResult处理动态权限回调逻辑，在每个按钮事件前添加权限判断，如果没有权限，则动态申请权限
+//todo 使用AudioRecord来进行录音，需要自己实现文件流读写等细节，但可以直接保存为wav文件格式，参考如下链接
+// https://blog.csdn.net/chezi008/article/details/53064604
+// https://github.com/dgutkai/BTRecorder
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, ESenseConnectionListener, ESenseSensorListener, ESenseEventListener {
     public static final String TAG = "HEU-IOT-eSense";
     public static final int REQUEST_ACCESS_COARSE_LOCATION_PERMISSION = 0x43;
@@ -61,8 +68,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ESenseManager manager;
     private BluetoothAdapter mBluetoothAdapter;
     ESenseConfig config;
-    private AudioManager audioManager;
-    private MediaRecorder mediaRecorder;
     private Boolean recordImuData = false;
     private long timesamp;
     private CsvHelper.LooperThread csvThread;
@@ -73,6 +78,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private int maxAdvertisementInterval;
     private float time;
     private int sampleingRate = 100;
+
+    private int frequence = 8000; //录制频率，单位hz.
+    private int channelConfig = AudioFormat.CHANNEL_IN_MONO;//单声道
+    private int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,7 +99,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         startRecordButton.setOnClickListener(this);
         stopRecordButton.setOnClickListener(this);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         registerBluetoothReceiver();
         requestPermissions();
     }
@@ -133,12 +141,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 CsvHelper.open(timesamp);
                 csvThread = new CsvHelper.LooperThread();
                 csvThread.start();
-                startRecording();
+                BluetoothUtil.getInstance(this).openSco(new BluetoothUtil.IBluetoothConnectListener() {
+                    @Override
+                    public void onError(String error) {
+                        Log.e(TAG, "openSco onError  error=" + error);
+                        Toast.makeText(MainActivity.this, "error：" + error, Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onSuccess() {
+                        //这里启动录制任务
+                        Toast.makeText(MainActivity.this, "开始蓝牙录音", Toast.LENGTH_SHORT).show();
+                        startRecording();
+                    }
+                });
                 break;
 
             case R.id.stop_record_button:
                 endTime = System.currentTimeMillis();
-                time = (endTime - startTime)/1000.0f;
+                time = (endTime - startTime) / 1000.0f;
                 stopRecording();
                 timer.stop();
                 break;
@@ -344,81 +365,123 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
     private void startRecording() {
-        String fileName = Environment.getExternalStorageDirectory().getAbsolutePath() + "/ESenseData/" + timesamp + "voice.3gp";
-        mediaRecorder = new MediaRecorder();
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        mediaRecorder.setOutputFile(fileName);
-        //todo 看下单声道对采样频率的影响
-        mediaRecorder.setAudioSamplingRate(8000);
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        try {
-            mediaRecorder.prepare();
-        } catch (Exception e) {
-            // TODO: handle exception
-            Log.i(TAG, "prepare() failed!");
-        }
-        if (!audioManager.isBluetoothScoAvailableOffCall()) {
-            Log.i(TAG, "系统不支持蓝牙录音");
-            return;
-        }
-        Log.i(TAG, "系统支持蓝牙录音");
-        audioManager.stopBluetoothSco();
-        audioManager.startBluetoothSco();
-        registerReceiver(new ESenseBroadcastReceiver(), new IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED));
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                recordTask();
+            }
+        }).start();
+
     }
 
-
-    private void stopRecording() {
-        recordImuData = false;
-
-        mediaRecorder.setOnErrorListener(null);
-        mediaRecorder.setOnInfoListener(null);
-        mediaRecorder.setPreviewDisplay(null);
-
-
-        mediaRecorder.stop();
-        mediaRecorder.release();
-//        mediaRecorder = null;
-//        if (audioManager.isBluetoothScoOn()) {
-//            audioManager.setBluetoothScoOn(false);
-//            audioManager.stopBluetoothSco();
-//        }
-        //CsvHelper.flush();
-        Message msg = Message.obtain();
-        msg.what = 0;
-        msg.obj=time;
-        msg.arg1=sampleingRate;
-        csvThread.handler.sendMessage(msg);
-    }
-
-    class ESenseBroadcastReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            int state = intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1);
-            if (state == AudioManager.SCO_AUDIO_STATE_CONNECTED) {
-                Log.i(TAG, "AudioManager.SCO_AUDIO_STATE_CONNECTED");
-                audioManager.setBluetoothScoOn(true);
-                Log.i(TAG, "Routing:" + audioManager.isBluetoothScoOn());
-                audioManager.setMode(AudioManager.STREAM_MUSIC);
-                //这里录音刚刚开始，同时开始记录imu数据
-                recordImuData = true;
-                startTime = System.currentTimeMillis();
-                mediaRecorder.start();
-                timer.setBase(SystemClock.elapsedRealtime());//计时器清零
-                timer.start();
-                Toast.makeText(MainActivity.this, "开始记录数据", Toast.LENGTH_SHORT).show();
-                unregisterReceiver(this);
-            } else {
-                try {
-                    Thread.sleep(10000);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                audioManager.startBluetoothSco();
-                Log.i(TAG, "再次startBluetoothSco()");
+    private AudioDeviceInfo findAudioDevice(int deviceFlag, int deviceType) {
+        AudioManager manager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        AudioDeviceInfo[] adis = manager.getDevices(deviceFlag);
+        Log.i(TAG, "findAudioDevice: adis = " + adis);
+        for (AudioDeviceInfo adi : adis) {
+            Log.i(TAG, "findAudioDevice: adi.getType() = " + adi.getType());
+            if (adi.getType() == deviceType) {
+                return adi;
             }
         }
+        return null;
     }
+
+
+    //录音线程
+    private void recordTask() {
+        Log.i(TAG, "RecordTask2: AsyncTask");
+
+        try {
+            final String fileName = Environment.getExternalStorageDirectory().getAbsolutePath() + "/ESenseData/" + timesamp + "voice.pcm";
+            File file = new File(fileName);
+            //开通输出流到指定的文件
+            DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)));
+            //根据定义好的几个配置，来获取合适的缓冲大小
+            final int bufferSize = AudioRecord.getMinBufferSize(frequence, channelConfig, audioEncoding);
+//                int bufferSize = 640;
+            Log.i(TAG, "RecordTask: dataSize=" + bufferSize);//1280
+            //实例化AudioRecord//MediaRecorder.AudioSource.VOICE_COMMUNICATION
+//            AudioRecord record = new AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, frequence, channelConfig, audioEncoding, bufferSize);
+//            AudioRecord record = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, frequence, channelConfig, audioEncoding, bufferSize);
+            AudioRecord record = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, frequence, channelConfig, audioEncoding, bufferSize);
+            AudioDeviceInfo audioDevice = findAudioDevice(AudioManager.GET_DEVICES_INPUTS, AudioDeviceInfo.TYPE_BLUETOOTH_SCO);
+            if (null != audioDevice) {
+                Log.i(TAG, "RecordTask: audioDevice = " + audioDevice.getType());
+                record.setPreferredDevice(audioDevice);
+            }
+
+            //开始录制
+            record.startRecording();
+            recordImuData = true;
+            startTime = System.currentTimeMillis();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    timer.setBase(SystemClock.elapsedRealtime());//计时器清零
+                    timer.start();
+                }
+            });
+            if (record.getPreferredDevice() != null) {
+                Log.i(TAG, "RecordTask2: getPreferredDevice = " + record.getPreferredDevice().getType());
+            }
+            Log.i(TAG, "RecordTask2: getRoutedDevice = " + record.getRoutedDevice().getType());
+
+            byte audioData[] = new byte[bufferSize];
+
+            int r = 0; //存储录制进度
+            //定义循环，根据isRecording的值来判断是否继续录制
+            long beforeTime = 0;
+            while (recordImuData) {
+                //从bufferSize中读取字节，返回读取的short个数
+                int number = record.read(audioData, 0, bufferSize);
+                dos.write(audioData, 0, number);
+                //Log.i(TAG, "audioData number=" + number);
+//                    System.out.println(Arrays.toString(audioData));
+
+                r++; //自增进度值
+//                    long curTime = System.currentTimeMillis();
+//                    Log.i(TAG, "r=" + r + "   time over:" + (curTime - beforeTime)); //循环一次的时间是40毫秒，获取1280个自己音频数据
+//                    beforeTime = curTime;
+            }
+            //录制结束
+            record.stop();
+            record.release();
+            BluetoothUtil.getInstance(this).closeSco();
+            dos.flush();
+            dos.close();
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            final String wavFileName = Environment.getExternalStorageDirectory().getAbsolutePath() + "/ESenseData/" + timesamp + "voice.wav";
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    WavUtils.convertWaveFile(fileName, wavFileName, frequence, bufferSize);
+                }
+            }).start();
+
+            Log.i(TAG, "RecordTask2: over");
+            Log.v(TAG, "The DOS available:" + file.getAbsolutePath());
+            Log.v(TAG, "The DOS available:" + file.length());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void stopRecording() {
+
+
+        Message msg = Message.obtain();
+        msg.what = 0;
+        msg.obj = time;
+        msg.arg1 = sampleingRate;
+        csvThread.handler.sendMessage(msg);
+        recordImuData = false;
+    }
+
 }
