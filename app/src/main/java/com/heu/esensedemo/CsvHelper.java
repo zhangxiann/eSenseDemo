@@ -27,45 +27,29 @@ public class CsvHelper {
     private static BufferedOutputStream mImuOutputStream;
     private int i=0;
 
-    public static void open(long timesamp) {
+    public static void open(String userStr, String voiceStr) {
         String folderName = null;
         if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
             String path = Environment.getExternalStorageDirectory().getAbsolutePath();
             if (path != null) {
-                folderName = path + "/ESenseData/";
+                folderName = path + "/ESenseData1/"+voiceStr+"/";
             }
         }
 
         File fileRobo = new File(folderName);
         if (!fileRobo.exists()) {
-            fileRobo.mkdir();
+            fileRobo.mkdirs();
         }
-        mImuFileName = folderName + timesamp + "eSense-imu.csv";
+        mImuFileName = folderName + userStr + ".csv";
+        File csvFile = new File(mImuFileName);
+        if (csvFile.exists() && csvFile.isFile()){
+            csvFile.delete();
+        }
         try {
-            mImuOutputStream = new BufferedOutputStream(new FileOutputStream(
-                    new File(mImuFileName)));
+            mImuOutputStream = new BufferedOutputStream(new FileOutputStream(csvFile));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-//        mImuStringBuilder.append("timesamp");
-//        mImuStringBuilder.append(mComma);
-//        mImuStringBuilder.append("x");
-//        mImuStringBuilder.append(mComma);
-//        mImuStringBuilder.append("y");
-//        mImuStringBuilder.append(mComma);
-//        mImuStringBuilder.append("z");
-//        mImuStringBuilder.append("\n");
-//
-//        mImuStringBuilder = new StringBuilder(10241024);
-//        mImuStringBuilder.append("timesamp");
-//        mImuStringBuilder.append(mComma);
-//        mImuStringBuilder.append("x");
-//        mImuStringBuilder.append(mComma);
-//        mImuStringBuilder.append("y");
-//        mImuStringBuilder.append(mComma);
-//        mImuStringBuilder.append("z");
-//        mImuStringBuilder.append("\n");
-
     }
 
 
@@ -106,7 +90,6 @@ public class CsvHelper {
                 e.printStackTrace();
             }
         }
-        
     }
 
     public static final class LooperThread extends Thread {
