@@ -1,6 +1,4 @@
-package com.heu.esensedemo.io.esense.esenselib.app.src.main.java.io.esense.esenselib;
-
-import com.heu.esensedemo.io.esense.esenselib.app.src.main.java.io.esense.esenselib.ESenseManager;
+package com.heu.esensedemo.io.esense.esenselib;
 
 public interface ESenseConnectionListener {
     /**

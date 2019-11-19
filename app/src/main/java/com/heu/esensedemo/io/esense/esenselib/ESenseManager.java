@@ -1,4 +1,4 @@
-package com.heu.esensedemo.io.esense.esenselib.app.src.main.java.io.esense.esenselib;
+package com.heu.esensedemo.io.esense.esenselib;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;

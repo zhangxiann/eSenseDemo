@@ -1,6 +1,4 @@
-package com.heu.esensedemo.io.esense.esenselib.app.src.main.java.io.esense.esenselib;
-
-import com.heu.esensedemo.io.esense.esenselib.app.src.main.java.io.esense.esenselib.ESenseConfig;
+package com.heu.esensedemo.io.esense.esenselib;
 
 public class ESenseEvent {
     private long timestamp;  //phone's timestamp
