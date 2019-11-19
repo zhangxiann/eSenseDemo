@@ -18,7 +18,7 @@ import java.io.IOException;
 /**
  * 操作CSV文件的工具类
  */
-public class CsvHelper {
+public class CsvUtil {
 
     public static final String mComma = ",";
     public static final String TAG = "HEU-IOT-eSense";
@@ -32,7 +32,7 @@ public class CsvHelper {
         if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
             String path = Environment.getExternalStorageDirectory().getAbsolutePath();
             if (path != null) {
-                folderName = path + "/ESenseData1/"+voiceStr+"/";
+                folderName = path + Constants.dirname+voiceStr+"/";
             }
         }
 
@@ -92,6 +92,8 @@ public class CsvHelper {
         }
     }
 
+
+    //IO读写很慢，如果直接把IMU的数据写进文件，会有数据丢失。因此使用子线程来读写数据，使用handler和主线程通信
     public static final class LooperThread extends Thread {
         int i=0;
         public Handler handler;
@@ -110,14 +112,13 @@ public class CsvHelper {
                     //Log.d(TAG, String.valueOf(i));
                     super.handleMessage(msg);
                     switch (msg.what) {
-                        case 0:
+                        case Constants.MSG_TYPE_STOP:
                             float time = (float) msg.obj;
                             Log.d(TAG, "计时时间 = " + time +"ms; "+" imu 数据采集次数 =  "+i+"; 设置的采样频率 = " + msg.arg1 +"Hz; 实际采集频率 = "+ i/time+"Hz");
-
                             flush();
                             break;
 
-                        case 1:
+                        case Constants.MSG_TYPE_RECEIVE_DATA:
                             Bundle bundle = msg.getData();
                             ESenseData data = bundle.getParcelable("ESENSE_DATA");
                             writeCsv(data.getTimestamp(), data.accel[0], data.accel[1], data.accel[2], data.gyro[0], data.gyro[1], data.gyro[2]);

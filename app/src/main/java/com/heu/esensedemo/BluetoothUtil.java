@@ -7,9 +7,8 @@ import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.util.Log;
 
-import androidx.annotation.NonNull;
 
-
+//蓝牙工具类
 public class BluetoothUtil {
 
     private String TAG = "BluetoothUtil";

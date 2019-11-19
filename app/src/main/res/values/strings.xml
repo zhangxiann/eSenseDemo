@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">eSenseDemo</string>
+    <!--usertype 这里设置 10 个用户-->
+    <string name="user1">1</string>
+    <string name="user2">2</string>
+    <string name="user3">3</string>
+    <string name="user4">4</string>
+    <string name="user5">5</string>
+    <string name="user6">6</string>
+    <string name="user7">7</string>
+    <string name="user8">8</string>
+    <string name="user9">9</string>
+    <string name="user10">10</string>
+
+    <!--voicetype 这里设置 3 种录音-->
+    <string name="Hey_Siri">HeySiri</string>
+    <string name="OK_Google">OK Google</string>
+    <string name="Alexa">Alexa</string>
 </resources>

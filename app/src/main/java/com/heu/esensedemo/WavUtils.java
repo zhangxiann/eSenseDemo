@@ -1,11 +1,19 @@
 package com.heu.esensedemo;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+
+//声音文件格式转换工具类，把pcm格式转换为wav格式，方便相关处理
 public class WavUtils {
+    //这个类存放的都是静态变量，使用私有构造器避免类初始化
+    private WavUtils() {
+
+    }
+
     private static void WriteWaveFileHeader(FileOutputStream out, long totalAudioLen, long totalDataLen, long longSampleRate,
                                             int channels, long byteRate) throws IOException {
         byte[] header = new byte[44];
@@ -66,6 +74,11 @@ public class WavUtils {
     }
 
     public static void convertWaveFile(String inFileName, String outFileName, int sampling_rate, int bufferSize) {
+        File outFile = new File(outFileName);
+        if (outFile.exists() && outFile.isFile()) {
+            outFile.delete();
+        }
+
         FileInputStream in = null;
         FileOutputStream out = null;
         long totalAudioLen = 0;

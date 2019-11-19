@@ -20,18 +20,11 @@
             android:text="开始扫描左耳机" />
 
         <Button
-            android:id="@+id/set_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="设置配置信息" />
-
-        <Button
             android:id="@+id/read_settin_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="读取配置信息" />
+            android:text="读取和设置配置信息" />
 
 
 
@@ -58,27 +51,52 @@
 
 
     </LinearLayout>
-<!--    <LinearLayout
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="20dp"></View>
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
         android:orientation="horizontal">
-
-        <Button
-            android:id="@+id/start_time"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="开始计时" />
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="user_type" />
 
-        <Button
-            android:id="@+id/end_time"
-            android:layout_width="wrap_content"
+            <Spinner
+                android:id="@+id/user_type"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="停止计时" />
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="voice_type" />
+
+            <Spinner
+                android:id="@+id/voice_type"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+
+        </LinearLayout>
+    </LinearLayout>
 
 
-    </LinearLayout>-->
+
     <Chronometer
         android:layout_marginTop="50dp"
         android:id="@+id/timer"
