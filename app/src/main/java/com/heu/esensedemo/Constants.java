@@ -22,7 +22,7 @@ public class Constants {
     public static final String leftEarbudName = "eSense-0416";
 
     // 设置数据文件存放的目录名
-    public static final String dirname="/ESenseData1/";
+    public static final String dirname="/0ESenseData/";
 
     // 设置 IMU 采样频率
     public static final int sampleingRate = 100;
